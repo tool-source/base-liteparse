@@ -7,6 +7,8 @@ pub struct LiteParseConfig {
     pub ocr_language: String,
     /// Whether OCR is enabled. When true, runs on text-sparse pages and embedded images.
     pub ocr_enabled: bool,
+    /// HTTP OCR server URL (uses Tesseract if not provided)
+    pub ocr_server_url: Option<String>,
     /// Path to tessdata directory. Falls back to TESSDATA_PREFIX env var if not set.
     pub tessdata_path: Option<String>,
     /// Maximum number of pages to parse.
@@ -38,6 +40,7 @@ impl Default for LiteParseConfig {
         Self {
             ocr_language: "eng".to_string(),
             ocr_enabled: true,
+            ocr_server_url: None,
             tessdata_path: None,
             max_pages: 1000,
             target_pages: None,

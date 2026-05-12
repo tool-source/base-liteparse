@@ -73,13 +73,23 @@ fn pdfium_cache_dir() -> PathBuf {
     base.join(tag_safe).join(asset)
 }
 
-/// Platform cache dir: $XDG_CACHE_HOME, ~/Library/Caches, or ~/.cache
 fn dirs_cache() -> PathBuf {
     if let Ok(xdg) = env::var("XDG_CACHE_HOME") {
         return PathBuf::from(xdg);
     }
-    let home = env::var("HOME").expect("HOME env var not set");
+
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+
+    // Windows -> USERPROFILE
+    if target_os == "windows" {
+        if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+            return PathBuf::from(local_app_data);
+        }
+        let home = env::var("USERPROFILE").expect("USERPROFILE env var not set");
+        return PathBuf::from(home).join("AppData\\Local");
+    }
+
+    let home = env::var("HOME").expect("HOME env var not set");
     if target_os == "macos" {
         PathBuf::from(&home).join("Library/Caches")
     } else {

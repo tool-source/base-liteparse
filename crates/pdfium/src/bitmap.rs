@@ -49,7 +49,15 @@ impl Bitmap {
     /// Fill a rectangle with an ARGB color (0xAARRGGBB).
     pub fn fill_rect(&self, left: i32, top: i32, width: i32, height: i32, color: u64) {
         unsafe {
-            pdfium_sys::FPDFBitmap_FillRect(self.handle, left, top, width, height, color);
+            pdfium_sys::FPDFBitmap_FillRect(
+                self.handle,
+                left,
+                top,
+                width,
+                height,
+                // necessary for windows -> expected `u32`, found `u64`
+                color.try_into().unwrap(),
+            );
         }
     }
 

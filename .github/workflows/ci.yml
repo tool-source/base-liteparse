@@ -39,7 +39,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +53,23 @@ jobs:
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install tesseract leptonica
+
+      - name: Install system dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vcpkg = $env:VCPKG_INSTALLATION_ROOT
+          & "$vcpkg\vcpkg" install tesseract:x64-windows
+
+      - name: Set vcpkg env vars (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vcpkg = $env:VCPKG_INSTALLATION_ROOT
+          echo "VCPKG_ROOT=$vcpkg" >> $env:GITHUB_ENV
+          echo "VCPKG_DEFAULT_TRIPLET=x64-windows" >> $env:GITHUB_ENV
+          echo "TESSERACT_INCLUDE_PATH=$vcpkg\installed\x64-windows\include" >> $env:GITHUB_ENV
+          echo "TESSERACT_LIB_PATH=$vcpkg\installed\x64-windows\lib" >> $env:GITHUB_ENV
 
       - uses: actions/cache@v4
         with:

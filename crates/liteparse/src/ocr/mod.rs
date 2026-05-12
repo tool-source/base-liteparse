@@ -1,3 +1,4 @@
+pub mod http_simple;
 pub mod tesseract;
 
 /// A single word-level OCR result with bounding box and confidence.

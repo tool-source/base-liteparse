@@ -1,6 +1,8 @@
 use crate::config::{LiteParseConfig, OutputFormat, parse_target_pages};
 use crate::conversion;
 use crate::extract;
+use crate::ocr::OcrEngine;
+use crate::ocr::http_simple::HttpOcrEngine;
 use crate::ocr::tesseract::TesseractOcrEngine;
 use crate::ocr_merge;
 use crate::output::{json, text};
@@ -26,7 +28,7 @@ impl LiteParse {
     }
 
     /// Parse a document file, returning structured results.
-    pub fn parse(&self, input: &str) -> Result<ParseResult, Box<dyn std::error::Error>> {
+    pub async fn parse(&self, input: &str) -> Result<ParseResult, Box<dyn std::error::Error>> {
         let log = |msg: &str| {
             if !self.config.quiet {
                 eprintln!("{}", msg);
@@ -37,7 +39,9 @@ impl LiteParse {
         let pdf_path = if conversion::is_pdf(input) {
             input.to_string()
         } else {
-            conversion::convert_to_pdf(input, self.config.password.as_deref())?
+            conversion::convert_to_pdf(input, self.config.password.as_deref())
+                .await?
+                .pdf_path
         };
 
         let t0 = std::time::Instant::now();
@@ -67,12 +71,18 @@ impl LiteParse {
 
         // OCR pass
         if self.config.ocr_enabled {
-            let engine = TesseractOcrEngine::new(self.config.tessdata_path.clone());
+            let engine: Box<dyn OcrEngine> = if self.config.ocr_server_url.is_none() {
+                Box::new(TesseractOcrEngine::new(self.config.tessdata_path.clone()))
+            } else {
+                Box::new(HttpOcrEngine::new(
+                    self.config.ocr_server_url.clone().unwrap(),
+                ))
+            };
             ocr_merge::ocr_and_merge_pages(
                 &mut pages,
                 &pdf_path,
                 self.config.dpi,
-                &engine,
+                engine.as_ref(),
                 &self.config.ocr_language,
             )?;
         }
