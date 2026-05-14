@@ -79,11 +79,11 @@ jobs:
           working-directory: packages/python
           before-script-linux: |
             if command -v yum &> /dev/null; then
-              yum install -y clang-devel tesseract-devel leptonica-devel openssl-devel pkgconfig perl-IPC-Cmd glibc-devel || true
+              yum install -y tesseract-devel leptonica-devel openssl-devel pkgconfig perl-IPC-Cmd || true
             elif command -v apt-get &> /dev/null; then
-              apt-get update && apt-get install -y libclang-dev libtesseract-dev libleptonica-dev libssl-dev pkg-config libc6-dev || true
+              apt-get update && apt-get install -y libtesseract-dev libleptonica-dev libssl-dev pkg-config || true
             elif command -v apk &> /dev/null; then
-              apk add clang-dev tesseract-ocr-dev leptonica-dev openssl-dev pkgconf musl-dev || true
+              apk add tesseract-ocr-dev leptonica-dev openssl-dev pkgconf || true
             fi
 
       - name: Copy pdfium dylib into wheel (Unix)

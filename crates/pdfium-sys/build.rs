@@ -231,25 +231,42 @@ fn copy_dylib_to_target_deps(lib_dir: &Path) {
 }
 
 fn run_bindgen(include_dir: &Path) {
-    let bindings = bindgen::Builder::default()
-        .header("wrapper.h")
-        .clang_arg(format!("-I{}", include_dir.display()))
-        .allowlist_function("FPDF.*")
-        .allowlist_function("FPDFText_.*")
-        .allowlist_function("FPDFPage.*")
-        .allowlist_function("FPDFLink_.*")
-        .allowlist_function("FPDFFont_.*")
-        .allowlist_type("FPDF.*")
-        .allowlist_type("FS_.*")
-        .allowlist_var("FPDF.*")
-        .derive_debug(true)
-        .derive_default(true)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        .generate()
-        .expect("Unable to generate bindings");
-
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    let out_file = out_path.join("bindings.rs");
+
+    #[cfg(feature = "bindgen")]
+    {
+        let bindings = bindgen::Builder::default()
+            .header("wrapper.h")
+            .clang_arg(format!("-I{}", include_dir.display()))
+            .allowlist_function("FPDF.*")
+            .allowlist_function("FPDFText_.*")
+            .allowlist_function("FPDFPage.*")
+            .allowlist_function("FPDFLink_.*")
+            .allowlist_function("FPDFFont_.*")
+            .allowlist_type("FPDF.*")
+            .allowlist_type("FS_.*")
+            .allowlist_var("FPDF.*")
+            .derive_debug(true)
+            .derive_default(true)
+            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+            .generate()
+            .expect("Unable to generate bindings");
+
+        bindings
+            .write_to_file(&out_file)
+            .expect("Couldn't write bindings!");
+    }
+
+    #[cfg(not(feature = "bindgen"))]
+    {
+        let _ = include_dir;
+        let pregenerated = Path::new(env!("CARGO_MANIFEST_DIR")).join("bindings.rs");
+        fs::copy(&pregenerated, &out_file).unwrap_or_else(|e| {
+            panic!(
+                "Failed to copy pre-generated bindings from {}: {e}",
+                pregenerated.display()
+            )
+        });
+    }
 }

@@ -218,13 +218,13 @@ jobs:
         if: runner.os == 'Linux' && !matrix.use-cross
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-dev libtesseract-dev libleptonica-dev
+          sudo apt-get install -y libtesseract-dev libleptonica-dev
 
       - name: Install cross-compilation tools (Linux ARM64)
         if: matrix.use-cross
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
