@@ -141,6 +141,8 @@ jobs:
           path: |
             packages/node/*.node
             packages/node/${{ matrix.pdfium-dylib }}
+            packages/node/libc++.so.1
+            packages/node/libunwind.so.1
           if-no-files-found: error
 
   test:

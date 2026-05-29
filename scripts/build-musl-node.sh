@@ -6,24 +6,31 @@ set -eux
 # Alpine's libc++ links against llvm-libunwind (NOT the GNU libunwind, which conflicts);
 # libc++abi symbols are bundled in libc++ itself, no separate package.
 # Static libs (openssl-libs-static, zlib-static) are required because musl rust defaults
-# to crt-static for build scripts. libc++-static + llvm-libunwind-static provide
-# the .a archives we need to statically link the C++ runtime into the .node so
-# downstream Alpine users don't need to apk-install libc++.
+# to crt-static for build scripts.
 apk add --no-cache \
   build-base cmake git curl pkgconf perl \
-  clang libc++-dev libc++-static llvm-libunwind-dev llvm-libunwind-static \
+  clang libc++-dev llvm-libunwind-dev \
   tesseract-ocr-dev leptonica-dev \
   openssl-dev openssl-libs-static zlib-static
 
 curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable -t x86_64-unknown-linux-musl
 . /root/.cargo/env
 
-# - target-feature=-crt-static: the .node is a cdylib and must dynamically link libc.
-# - -l:libc++.a -l:libunwind.a: force-static-link the C++ runtime + unwinder so
-#   the resulting .node has no dlopen-time dependency on libc++.so.1 (which is
-#   not present on stock alpine / minimal node:20-alpine images).
-#   -l:NAME (with the colon) tells the linker to look up an exact filename,
-#   bypassing the usual .so > .a preference and shadowing the dylib request
-#   that cc-rs emits via `cargo:rustc-link-lib=c++`.
-export RUSTFLAGS="-C target-feature=-crt-static -C link-arg=-l:libc++.a -C link-arg=-l:libunwind.a"
+# napi produces a cdylib (.node) which MUST be dynamically linked against libc.
+export RUSTFLAGS="-C target-feature=-crt-static"
 npx napi build --cargo-cwd ../../crates/liteparse-napi --platform --release --js false --dts native.d.ts --target x86_64-unknown-linux-musl .
+
+# The resulting .node has a DT_NEEDED on libc++.so.1 (clang+libc++ runtime),
+# which is not present on stock node:20-alpine. Bundle the shared lib next to
+# the .node so that the $ORIGIN rpath (set by liteparse-napi/build.rs) finds
+# it at dlopen time. Same pattern we use for libpdfium.so.
+for lib in libc++.so.1 libunwind.so.1; do
+  src=$(find /usr/lib /usr/lib64 -maxdepth 2 -name "$lib" -type f 2>/dev/null | head -n1)
+  if [ -z "$src" ]; then
+    # On Alpine these are typically symlinks; resolve them.
+    src=$(find /usr/lib /usr/lib64 -maxdepth 2 -name "$lib" 2>/dev/null | head -n1)
+    src=$(readlink -f "$src")
+  fi
+  [ -n "$src" ] && [ -f "$src" ] || { echo "ERROR: cannot locate $lib"; exit 1; }
+  cp -v "$src" "./$lib"
+done
